@@ -1,0 +1,261 @@
+{
+  "doc_metadata": {
+    "title": "仓库管理系统（WMS）用户需求说明（URS）",
+    "version": "1.0",
+    "date": "2023-10-01"
+  },
+  "toc": [
+    "1. 目的",
+    "2. 范围",
+    "3. 定义",
+    "4. 参考资料",
+    "5. 系统描述",
+    "6. 详细要求",
+    "7. 作者信息",
+    "8. 附件",
+    "9. 修订历史"
+  ],
+  "purpose": "本用户需求说明文档（URS）旨在明确仓库管理系统（WMS）的需求，以规范仓库管理各环节，提高仓储作业效率，确保物流运作的准确性与及时性。",
+  "scope": "本文档适用于仓库管理系统（WMS）的需求定义与描述，涵盖物料基础信息管理、在库物料状态管理、物料到库与入库管理、上架管理、抽样管理、物料状态切换管理、卡板管理、在库管理、出库管理、盘点管理、报表系统、权限管理、日志管理、用户管理、容错管理、配置管理、电子数据规范等业务功能。",
+  "description": "WMS是一套集成软件系统，旨在支持并优化仓库和配送中心的运作，包括物料入库、在库、盘点及出库等环节，确保物料信息管理的准确性、库存状态的及时更新及各操作环节的有效衔接。",
+  "abbreviations": [
+    {
+      "abbr": "ER/ES",
+      "explanation_zh": "电子记录电子签名",
+      "explanation_en": null
+    },
+    {
+      "abbr": "EAS",
+      "explanation_zh": "企业管理系统",
+      "explanation_en": "Enterprise Application System"
+    },
+    {
+      "abbr": "LIMS",
+      "explanation_zh": "实验室信息管理系统",
+      "explanation_en": "Laboratory Information Management System"
+    },
+    {
+      "abbr": "AGV",
+      "explanation_zh": "自动导引车",
+      "explanation_en": "Automated Guided Vehicle"
+    },
+    {
+      "abbr": "MES",
+      "explanation_zh": "制造执行系统",
+      "explanation_en": "Manufacturing Execution System"
+    },
+    {
+      "abbr": "HA",
+      "explanation_zh": "高性能服务器",
+      "explanation_en": "High Availability"
+    }
+  ],
+  "requirements": [
+    {
+      "category": "功能性需求",
+      "item_id": "URS-6.2-1",
+      "item_name": "物料基础信息",
+      "criticality": "关键",
+      "content": "单独的模块，对物料信息进行维护，具体信息及来源如下：\n①物料代码和物料名称，由EAS下传到系统。\n②信息内容有物料代码（EAS下传）、物料名称（EAS下传）、单位、规格型号、过敏原、添加剂、库存环境、生产商、供应商、保质期等。\n③能区分不同生产商、供应商的同一个物料入库。\n④能区分同生产商、供应商的同一个物料不同规格入库。"
+    },
+    {
+      "category": "功能性需求",
+      "item_id": "URS-6.2-2",
+      "item_name": "在库物料状态管理",
+      "criticality": "关键",
+      "content": "①物料分为原料、试产、包材、研发四个仓库类型。\n②每个仓库类型有不合格、合格、复检、待检。\n③研发有不合格、合格、复检、待检、中间仓。"
+    },
+    {
+      "category": "功能性需求",
+      "item_id": "URS-6.2-3",
+      "item_name": "物料到库与入库管理",
+      "criticality": "关键",
+      "content": "采购入库与来源单据采购订单（EAS下传）关联。登记物料信息，系统自动生成内部管理批号，原料、包材仓库物料批号规则是7位：Y+年（2位）+月（两位）+流水号。试产仓库物料批号规则是在上规则的后面+S，研发仓库物料批号规则是在上规则的后面+A。需满足调拨入库、其他入库。"
+    },
+    {
+      "category": "功能性需求",
+      "item_id": "URS-6.2-4",
+      "item_name": "上架管理",
+      "criticality": "关键",
+      "content": "1、货架采用托盘管理和货位管理两种形式，使用扫描工具，托盘和货位要关联收货信息。上架完成，在系统可以查看每个物料放置的位置，能快速找到物料。\n2、所有物料完成上架后，回传给EAS生成库存。\n3、寄售仓的物料完成上架后，不回传给EAS生成库存，但是要传检验委托单给LIMS系统。"
+    },
+    {
+      "category": "功能性需求",
+      "item_id": "URS-6.2-5",
+      "item_name": "抽样管理",
+      "criticality": "关键",
+      "content": "记录每批抽样的件数、检验合格之后核减取样量，并且回传给EAS核减取样库存。打印取样单，扫描取样单可打印取样证和样品标签，核减取样量、取样单数量、取样证数量、样品标签数量都自动填充。"
+    },
+    {
+      "category": "功能性需求",
+      "item_id": "URS-6.2-6",
+      "item_name": "物料状态切换管理",
+      "criticality": "关键",
+      "content": "待检仓物料，在LIMS签发检验报告后，根据检验结果自动切换质量状态。不合格报告，物料状态不变，仍然是待检仓。合格报告，物料由待检状态切换成合格状态。让步接收报告，物料由待检状态切换成合格状态。过期物料在失效日期自动切换成不合格状态。"
+    },
+    {
+      "category": "功能性需求",
+      "item_id": "URS-6.2-7",
+      "item_name": "卡板管理",
+      "criticality": "非关键",
+      "content": "除了原辅料、包材的入库，还需要满足空托盘入库，空托盘以最简单的方式入库，以距离出口最近的位置出库。"
+    },
+    {
+      "category": "功能性需求",
+      "item_id": "URS-6.2-8",
+      "item_name": "在库管理",
+      "criticality": "关键",
+      "content": "1、可实时看见库存明细。\n2、可进行货品移位管理。\n3、对暂不可用的物料进行冻结。\n4、对物料批次可指定产品使用，非指定产品不能用。\n5、所有产生库存明细的操作，如退料入库或库存移位等，如条件相同，则合并成一条记录。\n6、对所有物料状态可互相调整。\n7、物料状态调整，回传EAS同步调整。转移至复检仓，发起请检单给LIMS系统。"
+    },
+    {
+      "category": "功能性需求",
+      "item_id": "URS-6.2-9",
+      "item_name": "出库管理",
+      "criticality": "关键",
+      "content": "1、有四种出库类型:领料出库、其他出库单、采购退料、调拨出库。\n2、领料出库是EAS下传领料单，按照领料单分配对应仓位的库存物料（可多单一起）、进行波次释放、出库明细传给MES中间表、剩余散件自动移位至车间寄存仓、回传EAS核减库存量。\n3、在立库的拆包间，能使用AGV运输，AGV将货拉到指定拆包位置，AGV自动配送托盘、AGV将物料送至暂存间，回传MES叫料系统显示库存。车间根据需求在MES叫料系统操作后，传信息给AGV将运物料到提升机，提升机扫描后物料出库完成。\n4、其他出库特殊情况可选择不回传EAS。\n5、出库完成后要打印调拨单、拣货单、汇总标签、尾数标签、移位标签、整件标签、散件出库单、其他出库单。"
+    },
+    {
+      "category": "功能性需求",
+      "item_id": "URS-6.2-10",
+      "item_name": "盘点管理",
+      "criticality": "关键",
+      "content": "可单独对WMS内部调账。或WMS调帐之后，传EAS系统同步调账。"
+    },
+    {
+      "category": "功能性需求",
+      "item_id": "URS-6.2-11",
+      "item_name": "报表系统",
+      "criticality": "非关键",
+      "content": "有出库的拣货明细表、各类的交易流水、每项的操作日志。"
+    },
+    {
+      "category": "功能性需求",
+      "item_id": "URS-6.2-12",
+      "item_name": "权限管理",
+      "criticality": "关键",
+      "content": "不同的岗位可有不同的操作权限控制。"
+    },
+    {
+      "category": "控制需求",
+      "item_id": "URS-6.3-1",
+      "item_name": "日志管理",
+      "criticality": "关键",
+      "content": "每项操作有操作日志，并且不得修改。"
+    },
+    {
+      "category": "控制需求",
+      "item_id": "URS-6.3-2",
+      "item_name": "用户管理",
+      "criticality": "关键",
+      "content": "一个用户不能同时在多处登录，使用满一年强制修改一次密码。"
+    },
+    {
+      "category": "安全性",
+      "item_id": "URS-6.4-1",
+      "item_name": "权限管理",
+      "criticality": "关键",
+      "content": "只有授权用户才能访问系统。"
+    },
+    {
+      "category": "安全性",
+      "item_id": "URS-6.4-2",
+      "item_name": "用户管理",
+      "criticality": "关键",
+      "content": "用户帐户可以手动创建，但用户帐户命名规则须与域帐户命名规则一致，密码策略符合IT系统内部要求的密码策略。WMS将在用户执行操作之前对用户进行身份验证。如果用户未通过身份验证，将向用户显示一个错误。WMS将阻止同一用户在同一步骤中同时作为确认人和验证人进行签名。"
+    },
+    {
+      "category": "安全性",
+      "item_id": "URS-6.4-3",
+      "item_name": "权限管理",
+      "criticality": "关键",
+      "content": "用户只能访问系统赋予的功能。"
+    },
+    {
+      "category": "安全性",
+      "item_id": "URS-6.4-4",
+      "item_name": "日志管理",
+      "criticality": "关键",
+      "content": "系统必须对所有关键数据的输入、更改进行审计追踪。"
+    },
+    {
+      "category": "灾难恢复需求",
+      "item_id": "URS-6.5-2",
+      "item_name": "容错管理",
+      "criticality": "关键",
+      "content": "系统在断电断网的情况下仅允许丢失最后一个未保存的数据。"
+    },
+    {
+      "category": "灾难恢复需求",
+      "item_id": "URS-6.5-3",
+      "item_name": "配置管理",
+      "criticality": "关键",
+      "content": "在所有用户（最多50个）登录系统后，要保持业务流程处于运行状态。"
+    },
+    {
+      "category": "灾难恢复需求",
+      "item_id": "URS-6.5-5",
+      "item_name": "配置管理",
+      "criticality": "关键",
+      "content": "高性能（HA）物理服务器。"
+    },
+    {
+      "category": "ER/ES需求",
+      "item_id": "URS-6.6-1",
+      "item_name": "电子数据",
+      "criticality": "关键",
+      "content": "电子记录必须以电子和纸质形式（包括审计跟踪和元数据）准确、完整地再现。"
+    },
+    {
+      "category": "ER/ES需求",
+      "item_id": "URS-6.6-2",
+      "item_name": "电子数据",
+      "criticality": "关键",
+      "content": "电子数据必须在规定的保存期内可检索。"
+    },
+    {
+      "category": "ER/ES需求",
+      "item_id": "URS-6.6-3",
+      "item_name": "电子数据",
+      "criticality": "关键",
+      "content": "必须限制授权用户访问系统。"
+    }
+  ],
+  "references": [
+    {
+      "title": "WMS实施指南",
+      "author": "仓储管理协会",
+      "year": "2022"
+    },
+    {
+      "title": "ERP与WMS系统集成",
+      "author": "信息化协会",
+      "year": "2021"
+    }
+  ],
+  "authors": [
+    {
+      "name": "张三",
+      "position": "系统需求分析师",
+      "organization": "仓储解决方案公司",
+      "email": "zhangsan@warehouse-solutions.com"
+    }
+  ],
+  "attachments": [
+    {
+      "title": "业务流程图",
+      "file_name": "wms_business_flowcharts.pdf"
+    },
+    {
+      "title": "数据关系图",
+      "file_name": "wms_data_relationship_diagram.pdf"
+    }
+  ],
+  "revision_history": [
+    {
+      "version": "1.0",
+      "date": "2023-10-01",
+      "description": "初始版本",
+      "author": "张三"
+    }
+  ]
+}
