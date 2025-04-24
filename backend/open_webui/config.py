@@ -2604,3 +2604,87 @@ LDAP_CA_CERT_FILE = PersistentConfig(
 LDAP_CIPHERS = PersistentConfig(
     "LDAP_CIPHERS", "ldap.server.ciphers", os.environ.get("LDAP_CIPHERS", "ALL")
 )
+
+
+
+####################################
+# SAML
+####################################
+
+ENABLE_SAML = PersistentConfig(
+    "ENABLE_SAML",
+    "saml.enable",
+    os.environ.get("ENABLE_SAML", "false").lower() == "true",
+)
+
+SAML_IDP_ENTITY_ID = PersistentConfig(
+    "SAML_IDP_ENTITY_ID",
+    "saml.idp.entity_id",
+    os.environ.get("SAML_IDP_ENTITY_ID", "https://sts.chinacloudapi.cn/3d23ce3c-06d8-4c29-b113-78e5599e8fd8/"),
+)
+
+SAML_IDP_SSO_URL = PersistentConfig(
+    "SAML_IDP_SSO_URL",
+    "saml.idp.sso_url",
+    os.environ.get("SAML_IDP_SSO_URL", "https://login.partner.microsoftonline.cn/3d23ce3c-06d8-4c29-b113-78e5599e8fd8/saml2"),
+)
+
+SAML_IDP_SLO_URL = PersistentConfig(
+    "SAML_IDP_SLO_URL",
+    "saml.idp.slo_url",
+    os.environ.get("SAML_IDP_SLO_URL", "https://login.partner.microsoftonline.cn/3d23ce3c-06d8-4c29-b113-78e5599e8fd8/saml2"),
+)
+
+SAML_SP_ENTITY_ID = PersistentConfig(
+    "SAML_SP_ENTITY_ID",
+    "saml.sp.entity_id",
+    os.environ.get("SAML_SP_ENTITY_ID", "https://chatgpt.nnit.cn/api/v1/auths/saml/metadata/"),
+)
+
+SAML_SP_ACS_URL = PersistentConfig(
+    "SAML_SP_ACS_URL",
+    "saml.sp.acs_url",
+    os.environ.get("SAML_SP_ACS_URL", "https://chatgpt.nnit.cn/api/v1/auths/saml/acs"),
+)
+
+SAML_SP_SLO_URL = PersistentConfig(
+    "SAML_SP_SLO_URL",
+    "saml.sp.slo_url",
+    os.environ.get("SAML_SP_SLO_URL", "https://chatgpt.nnit.cn/api/v1/auths/saml/slo"),
+)
+
+SAML_IDP_CERT = PersistentConfig(
+    "SAML_IDP_CERT",
+    "saml.idp.cert",
+    os.environ.get("SAML_IDP_CERT", ""),
+)
+
+# SAML属性映射配置
+# 将SAML响应中的属性映射到友好名称
+SAML_ATTRIBUTE_MAPPING = PersistentConfig(
+    "SAML_ATTRIBUTE_MAPPING",
+    "saml.attribute_mapping",
+    {
+        # 常用属性映射
+        "email": "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress",
+        "display_name": "http://schemas.microsoft.com/identity/claims/displayname",
+        "username": "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name",
+        "department": "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/department",
+        
+        # 其他常见属性
+        "tenant_id": "http://schemas.microsoft.com/identity/claims/tenantid",
+        "object_id": "http://schemas.microsoft.com/identity/claims/objectidentifier",
+        "identity_provider": "http://schemas.microsoft.com/identity/claims/identityprovider",
+        "given_name": "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname",
+        "surname": "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname",
+        
+        # 扩展属性
+        "roles": "http://schemas.microsoft.com/ws/2008/06/identity/claims/role",
+        "groups": "http://schemas.microsoft.com/ws/2008/06/identity/claims/groups",
+        "upn": "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/upn",
+        "mobile_phone": "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/mobilephone",
+        "country": "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/country",
+        "organization": "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/organization",
+        "company": "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/companyname",
+    },
+)

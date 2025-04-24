@@ -61,6 +61,7 @@ from open_webui.routers import (
     pipelines,
     tasks,
     auths,
+    auths_saml,
     channels,
     chats,
     folders,
@@ -287,6 +288,15 @@ from open_webui.config import (
     LDAP_USE_TLS,
     LDAP_CA_CERT_FILE,
     LDAP_CIPHERS,
+    # SAML
+    ENABLE_SAML,
+    SAML_IDP_ENTITY_ID,
+    SAML_IDP_SSO_URL,
+    SAML_IDP_SLO_URL,
+    SAML_SP_ENTITY_ID,
+    SAML_SP_ACS_URL,
+    SAML_SP_SLO_URL,
+    SAML_IDP_CERT,
     # Misc
     ENV,
     CACHE_DIR,
@@ -561,6 +571,15 @@ app.state.config.LDAP_USE_TLS = LDAP_USE_TLS
 app.state.config.LDAP_CA_CERT_FILE = LDAP_CA_CERT_FILE
 app.state.config.LDAP_CIPHERS = LDAP_CIPHERS
 
+# SAML配置
+app.state.config.ENABLE_SAML = ENABLE_SAML
+app.state.config.SAML_IDP_ENTITY_ID = SAML_IDP_ENTITY_ID
+app.state.config.SAML_IDP_SSO_URL = SAML_IDP_SSO_URL
+app.state.config.SAML_IDP_SLO_URL = SAML_IDP_SLO_URL
+app.state.config.SAML_SP_ENTITY_ID = SAML_SP_ENTITY_ID
+app.state.config.SAML_SP_ACS_URL = SAML_SP_ACS_URL
+app.state.config.SAML_SP_SLO_URL = SAML_SP_SLO_URL
+app.state.config.SAML_IDP_CERT = SAML_IDP_CERT
 
 app.state.AUTH_TRUSTED_EMAIL_HEADER = WEBUI_AUTH_TRUSTED_EMAIL_HEADER
 app.state.AUTH_TRUSTED_NAME_HEADER = WEBUI_AUTH_TRUSTED_NAME_HEADER
@@ -934,6 +953,11 @@ app.include_router(auths.router, prefix="/api/v1/auths", tags=["auths"])
 app.include_router(users.router, prefix="/api/v1/users", tags=["users"])
 
 
+# 仅在SAML启用时注册SAML路由
+if app.state.config.ENABLE_SAML:
+    app.include_router(auths_saml.router, prefix="/api/v1/auths/saml", tags=["auths", "saml"])
+
+
 app.include_router(channels.router, prefix="/api/v1/channels", tags=["channels"])
 app.include_router(chats.router, prefix="/api/v1/chats", tags=["chats"])
 
@@ -1047,6 +1071,10 @@ async def chat_completion(
     form_data: dict,
     user=Depends(get_verified_user),
 ):
+    # 详细记录请求体内容
+    log.info(f"接收到 /api/chat/completions 请求 - 用户ID: {user.id}")
+    log.debug(f"请求体详情: {json.dumps(form_data, ensure_ascii=False, default=str)}")
+    
     if not request.app.state.MODELS:
         await get_all_models(request, user=user)
 
@@ -1057,9 +1085,12 @@ async def chat_completion(
         if not model_item.get("direct", False):
             model_id = form_data.get("model", None)
             if model_id not in request.app.state.MODELS:
+                log.error(f"模型未找到: {model_id}")
                 raise Exception("Model not found")
 
             model = request.app.state.MODELS[model_id]
+            log.info(f"使用模型: {model_id}")
+            log.debug(f"模型详情: {json.dumps(model, ensure_ascii=False, default=str)}")
             model_info = Models.get_model_by_id(model_id)
 
             # Check if user has access to the model
@@ -1102,9 +1133,12 @@ async def chat_completion(
         request.state.metadata = metadata
         form_data["metadata"] = metadata
 
+        log.info(f"处理聊天载荷 - 聊天ID: {metadata.get('chat_id')}, 消息ID: {metadata.get('message_id')}")
         form_data, metadata, events = await process_chat_payload(
             request, form_data, user, metadata, model
         )
+        log.debug(f"处理后的载荷: {json.dumps(form_data, ensure_ascii=False, default=str)}")
+        log.debug(f"元数据: {json.dumps(metadata, ensure_ascii=False, default=str)}")
 
     except Exception as e:
         log.debug(f"Error processing chat payload: {e}")
@@ -1122,12 +1156,16 @@ async def chat_completion(
         )
 
     try:
+        log.info(f"调用聊天完成处理器 - 模型: {model.get('id', '未知')}, 流式: {form_data.get('stream', False)}")
         response = await chat_completion_handler(request, form_data, user)
+        log.debug(f"聊天完成处理器响应类型: {type(response).__name__}")
 
+        log.info(f"处理聊天响应 - 聊天ID: {metadata.get('chat_id')}")
         return await process_chat_response(
             request, response, form_data, user, metadata, model, events, tasks
         )
     except Exception as e:
+        log.error(f"聊天完成处理异常: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
@@ -1143,15 +1181,23 @@ generate_chat_completion = chat_completion
 async def chat_completed(
     request: Request, form_data: dict, user=Depends(get_verified_user)
 ):
+    # 详细记录请求体内容
+    log.info(f"接收到 /api/chat/completed 请求 - 用户ID: {user.id}")
+    log.debug(f"请求体详情: {json.dumps(form_data, ensure_ascii=False, default=str)}")
+    
     try:
         model_item = form_data.pop("model_item", {})
 
         if model_item.get("direct", False):
             request.state.direct = True
             request.state.model = model_item
-
-        return await chat_completed_handler(request, form_data, user)
+        # return await chat_completed_handler(request, form_data, user)
+        log.info(f"调用聊天完成处理器 - 聊天ID: {form_data.get('chat_id')}")
+        result = await chat_completed_handler(request, form_data, user)
+        log.debug(f"聊天完成处理器结果: {json.dumps(result, ensure_ascii=False, default=str)}")
+        return result
     except Exception as e:
+        log.error(f"聊天完成处理异常: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
@@ -1171,6 +1217,7 @@ async def chat_action(
 
         return await chat_action_handler(request, action_id, form_data, user)
     except Exception as e:
+        log.error(f"聊天完成处理异常: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
