@@ -196,7 +196,8 @@ class ModelsTable:
             ]
 
     def get_models_by_user_id(
-        self, user_id: str, permission: str = "write"
+        # self, user_id: str, permission: str = "write"
+        self, user_id: str, permission: str = "read" # 更改权限
     ) -> list[ModelUserResponse]:
         models = self.get_models()
         return [

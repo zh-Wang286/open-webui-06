@@ -26,6 +26,7 @@ router = APIRouter()
 @router.get("/", response_model=list[ModelUserResponse])
 async def get_models(id: Optional[str] = None, user=Depends(get_verified_user)):
     if user.role == "admin":
+    # if user.role :
         return Models.get_models()
     else:
         return Models.get_models_by_user_id(user.id)
@@ -52,13 +53,14 @@ async def create_new_model(
     form_data: ModelForm,
     user=Depends(get_verified_user),
 ):
-    if user.role != "admin" and not has_permission(
-        user.id, "workspace.models", request.app.state.config.USER_PERMISSIONS
-    ):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=ERROR_MESSAGES.UNAUTHORIZED,
-        )
+    # # 普通用户可以创建 Apps
+    # if user.role != "admin" and not has_permission(
+    #     user.id, "workspace.models", request.app.state.config.USER_PERMISSIONS
+    # ):
+    #     raise HTTPException(
+    #         status_code=status.HTTP_401_UNAUTHORIZED,
+    #         detail=ERROR_MESSAGES.UNAUTHORIZED,
+    #     )
 
     model = Models.get_model_by_id(form_data.id)
     if model:
