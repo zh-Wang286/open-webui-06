@@ -20,7 +20,7 @@ log = logging.getLogger(__name__)
 # Basic logging config, should be configured externally in a real app
 logging.basicConfig(level=logging.INFO)
 
-class Pipe:
+class Pipe: # (类名必需为"Pipe")
     # 2.1.1 配置类 (Valves)
     class Valves(BaseModel):
         API_KEY: Optional[str] = Field(default=os.getenv("MY_API_KEY"), description="API Key")

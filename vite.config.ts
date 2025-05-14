@@ -30,6 +30,10 @@ export default defineConfig({
 			]
 		})
 	],
+	server: {
+		port: 8181,
+		allowedHosts: ['chatgpt.nnit.cn']
+	},
 	define: {
 		APP_VERSION: JSON.stringify(process.env.npm_package_version),
 		APP_BUILD_HASH: JSON.stringify(process.env.APP_BUILD_HASH || 'dev-build')

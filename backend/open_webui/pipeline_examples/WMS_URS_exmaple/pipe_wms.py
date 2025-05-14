@@ -601,9 +601,9 @@ class Pipe:
                 feedback = (
                     f"## WMS需求分析结果\n\n"
                     f"### 需求覆盖度: {analysis_result.get('coverage_percentage')}%\n\n"
-                    f"### 已覆盖字段 ({len(analysis_result.get('covered_fields', []))}):\n"
+                    f"### 已覆盖需求 ({len(analysis_result.get('covered_fields', []))}):\n"
                     f"{', '.join(analysis_result.get('covered_fields', []))}\n\n"
-                    f"### 缺失字段 ({len(analysis_result.get('missing_fields', []))}):\n"
+                    f"### 待补充的需求 ({len(analysis_result.get('missing_fields', []))}):\n"
                     f"{', '.join(analysis_result.get('missing_fields', []))}\n\n"
                     f"### 分析:\n{analysis_result.get('analysis', '')}\n\n"
                     f"### 下一步建议:\n{analysis_result.get('next_steps', '')}"
@@ -612,13 +612,13 @@ class Pipe:
                 # 根据覆盖度决定下一阶段
                 if state["coverage"] < 50:
                     state["stage"] = "feedback"  # 需要更多需求输入
-                    next_action = "请提供更多需求信息，尤其是上面列出的缺失字段。"
+                    next_action = "请提供更多需求信息，尤其是上面列出的缺失内容。"
                 elif state["coverage"] >= 80:
                     state["stage"] = "rag_query"  # 可以转到RAG查询阶段
-                    next_action = "您的需求已经覆盖了大部分关键字段，我们将基于此生成详细的URS文档。"
+                    next_action = "您的需求已经覆盖了大部分关键需求，我们将基于此生成详细的URS文档。"
                 else:
                     state["stage"] = "feedback"  # 需要针对性提问
-                    next_action = "感谢您的需求描述，但还缺少一些关键详情。请充实上面列出的缺失字段。"
+                    next_action = "感谢您的需求描述，但还缺少一些关键详情。请充实上面列出的缺失内容。"
 
                 # 生成最终响应
                 response = f"{feedback}\n\n{next_action}"
@@ -977,7 +977,9 @@ class Pipe:
                         static_file_path = os.path.join(
                             static_resource_dir, f"wms_urs_document_{timestamp}.json"
                         )
-                        print(f"====================static_file_path: {static_file_path}====================")
+                        print(
+                            f"====================static_file_path: {static_file_path}===================="
+                        )
 
                         with open(static_file_path, "w", encoding="utf-8") as f:
                             f.write(
@@ -990,7 +992,9 @@ class Pipe:
 
                     # 设置正确的URL路径 - 始终使用固定文件名以便外部访问
                     url_path = f"/static/wms_docs/wms_urs_document_{timestamp}.json"
-                    print(f"====================url_path: {url_path}====================")
+                    print(
+                        f"====================url_path: {url_path}===================="
+                    )
 
                     # 考虑前后端分离的情况
                     full_url = f"http://chatgpt.nnit.cn:8180{url_path}"

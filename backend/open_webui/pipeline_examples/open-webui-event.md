@@ -308,6 +308,12 @@ sio.on(channel, message_listener)
 
 7. **会话管理**: 正确处理会话连接和断开，确保资源得到释放。
 
+8. **事件限流**: 实现事件发送限流机制，避免过于频繁的事件发送导致前端性能问题。
+
+9. **事件类型分层**: 根据功能和用途对事件类型进行分层，如 `counter:update`、`counter:complete` 等。
+
+10. **完整的事件生命周期**: 设计事件的完整生命周期，包括开始、进行中和结束状态，便于前端跟踪进度。
+
 ## 示例：完整的管道实现
 
 ```python
@@ -395,3 +401,135 @@ async def example_pipeline(
 | `message` | 发送消息内容 | `{"content": "消息内容"}` |
 | `replace` | 替换消息内容 | `{"content": "新内容"}` |
 | `fetch:data` | 获取数据 | `{"query": "查询内容"}` |
+
+## 事件发送模式
+
+在设计和实现事件发送时，可以采用以下几种模式来提高代码质量和用户体验：
+
+### 1. 计数器进度模式
+
+适用于需要展示进度的场景，如分步骤处理、批量操作等。
+
+```python
+# 示例：计数器进度事件发送
+async def process_with_counter(emitter, max_count=10, interval=0.5):
+    for i in range(1, max_count + 1):
+        # 发送计数事件
+        if emitter:
+            await emitter({
+                "type": "counter:update",
+                "data": {
+                    "count": i,
+                    "max_count": max_count,
+                    "percentage": i / max_count * 100,
+                    "message": f"处理第 {i} 步，共 {max_count} 步"
+                }
+            })
+        
+        # 处理逻辑...
+        await asyncio.sleep(interval)
+    
+    # 发送完成事件
+    if emitter:
+        await emitter({
+            "type": "counter:complete",
+            "data": {
+                "message": "处理完成",
+                "total_count": max_count
+            }
+        })
+```
+
+### 2. 状态变更模式
+
+适用于需要报告处理状态变化的场景，如任务状态从「等待」到「处理中」再到「完成」。
+
+```python
+# 示例：状态变更事件发送
+async def process_with_status(emitter):
+    # 发送初始状态
+    if emitter:
+        await emitter({
+            "type": "status:change",
+            "data": {
+                "status": "waiting",
+                "message": "等待处理"
+            }
+        })
+    
+    # 发送处理中状态
+    if emitter:
+        await emitter({
+            "type": "status:change",
+            "data": {
+                "status": "processing",
+                "message": "正在处理"
+            }
+        })
+    
+    # 处理逻辑...
+    await asyncio.sleep(2)
+    
+    # 发送完成状态
+    if emitter:
+        await emitter({
+            "type": "status:change",
+            "data": {
+                "status": "completed",
+                "message": "处理完成"
+            }
+        })
+```
+
+### 3. 限流发送模式
+
+适用于需要频繁发送事件但又不希望事件过多的场景，通过时间间隔控制发送频率。
+
+```python
+# 示例：限流事件发送
+class EventEmitter:
+    def __init__(self, min_interval=0.5):
+        self.last_emit_time = 0
+        self.min_interval = min_interval
+    
+    async def emit(self, emitter, event_type, data, force=False):
+        current_time = time.time()
+        
+        # 除非强制发送，否则检查时间间隔
+        if not force and (current_time - self.last_emit_time < self.min_interval):
+            return False
+        
+        if emitter:
+            await emitter({
+                "type": event_type,
+                "data": data
+            })
+            self.last_emit_time = current_time
+            return True
+        
+        return False
+```
+
+### 4. 批量事件模式
+
+适用于需要一次性发送多个相关事件的场景，减少事件发送次数。
+
+```python
+# 示例：批量事件发送
+async def send_batch_events(emitter, events):
+    if not emitter or not events:
+        return
+    
+    batch_data = {
+        "type": "batch:events",
+        "data": {
+            "events": events,
+            "count": len(events),
+            "timestamp": time.time()
+        }
+    }
+    
+    await emitter(batch_data)
+```
+
+这些模式可以根据具体需求组合使用，以实现更复杂的事件通知机制。在实际应用中，应根据前端展示需求和后端处理逻辑选择合适的事件发送模式。
