@@ -22,7 +22,8 @@ Open WebUI实现了完整的SAML认证流程，包括：
 登录流程详解：
 
 1. 用户访问Open WebUI的SAML登录端点 `/saml/login`
-2. 系统生成SAML请求并重定向到IdP的单点登录URL
+2. 系统生成SAML请求并重定向到IdP的单点登录URL。
+2.1. 在此步骤中，`OneLogin_Saml2_Auth.login(force_authn=True)` 强制用户重新进行身份验证，即使他们已经拥有活动的IdP会话。
 3. 用户在IdP完成身份验证
 4. IdP生成包含用户信息的SAML响应，并将用户重定向回Open WebUI的断言消费服务（ACS）端点 `/saml/acs`
 

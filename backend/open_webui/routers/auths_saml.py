@@ -350,7 +350,10 @@ async def login(request: Request):
     
     try:
         auth = await SAMLAuth.init_saml_auth(request)
-        login_url = auth.login()
+        login_url = auth.login(
+            force_authn=True, 
+            # is_passive=True,
+        )
         log.info(f"SAML登录请求: {login_url}")
         
         return RedirectResponse(login_url)
@@ -392,9 +395,9 @@ async def acs(request: Request, response: Response):
         # 检查部门字段是否满足要求（只允许NNIT-Department部门的用户登录）
         # 优先使用便捷别名，如果不存在则使用原始属性路径
         department = user_data.get('department', user_data.get('http://schemas.xmlsoap.org/ws/2005/05/identity/claims/department', ''))
-        if department != 'NNIT-Department':
-            log.error(f"用户部门不匹配：{department}，仅允许NNIT-Department部门的用户登录")
-            raise HTTPException(403, detail=f"访问被拒绝：仅允许NNIT-Department部门的用户登录")
+        # if department != 'NNIT-Department':
+        #     log.error(f"用户部门不匹配：{department}，仅允许NNIT-Department部门的用户登录")
+        #     raise HTTPException(403, detail=f"访问被拒绝：仅允许NNIT-Department部门的用户登录")
         
         email = user_data.get('email', user_data.get('name_id', ''))
         if not email:
