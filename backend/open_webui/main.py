@@ -8,13 +8,14 @@ import shutil
 import sys
 import time
 import random
+import ipaddress
 
 from contextlib import asynccontextmanager
 from urllib.parse import urlencode, parse_qs, urlparse
 from pydantic import BaseModel
 from sqlalchemy import text
 
-from typing import Optional
+from typing import Optional, Set, Union
 from aiocache import cached
 import aiohttp
 import requests
@@ -859,6 +860,139 @@ app.state.config.AUTOCOMPLETE_GENERATION_INPUT_MAX_LENGTH = (
 
 app.state.MODELS = {}
 
+print(f"%%%%%%%%%%\n DEFAULT_PROMPT_SUGGESTIONS: {DEFAULT_PROMPT_SUGGESTIONS} \n%%%%%%%%%%")
+
+class IPBlockingMiddleware(BaseHTTPMiddleware):
+    """
+    IP地址拦截中间件
+    
+    用于拦截恶意IP地址的请求，防止攻击和恶意扫描。
+    支持单个IP地址和IP地址段的拦截。
+    """
+    
+    def __init__(self, app, blocked_ips: Set[Union[str, ipaddress.IPv4Network, ipaddress.IPv6Network]] = None):
+        """
+        初始化IP拦截中间件
+        
+        Args:
+            app: FastAPI应用实例
+            blocked_ips: 被拦截的IP地址集合，支持单个IP和CIDR格式的网段
+        """
+        super().__init__(app)
+        self.blocked_ips = blocked_ips or set()
+        self.blocked_networks = set()
+        self.blocked_single_ips = set()
+        
+        # 分类处理IP地址和网段
+        for ip_item in self.blocked_ips:
+            try:
+                if isinstance(ip_item, str):
+                    if '/' in ip_item:
+                        # CIDR格式的网段
+                        network = ipaddress.ip_network(ip_item, strict=False)
+                        self.blocked_networks.add(network)
+                    else:
+                        # 单个IP地址
+                        ip_addr = ipaddress.ip_address(ip_item)
+                        self.blocked_single_ips.add(ip_addr)
+                else:
+                    # 已经是ipaddress对象
+                    if hasattr(ip_item, 'network_address'):
+                        self.blocked_networks.add(ip_item)
+                    else:
+                        self.blocked_single_ips.add(ip_item)
+            except ValueError as e:
+                log.warning(f"无效的IP地址格式: {ip_item}, 错误: {e}")
+    
+    def is_ip_blocked(self, client_ip: str) -> bool:
+        """
+        检查IP地址是否被拦截
+        
+        Args:
+            client_ip: 客户端IP地址字符串
+            
+        Returns:
+            bool: 如果IP被拦截返回True，否则返回False
+        """
+        try:
+            ip_addr = ipaddress.ip_address(client_ip)
+            
+            # 检查单个IP地址
+            if ip_addr in self.blocked_single_ips:
+                return True
+            
+            # 检查IP网段
+            for network in self.blocked_networks:
+                if ip_addr in network:
+                    return True
+                    
+            return False
+        except ValueError:
+            # 无效的IP地址格式，记录警告但不拦截
+            log.warning(f"无效的客户端IP地址格式: {client_ip}")
+            return False
+    
+    async def dispatch(self, request: Request, call_next):
+        """
+        中间件主要处理逻辑
+        
+        Args:
+            request: FastAPI请求对象
+            call_next: 下一个中间件或路由处理函数
+            
+        Returns:
+            Response: HTTP响应对象
+        """
+        # 获取客户端IP地址
+        client_ip = self.get_client_ip(request)
+        
+        # 检查IP是否被拦截
+        if self.is_ip_blocked(client_ip):
+            log.warning(f"拦截恶意IP请求: {client_ip} - {request.method} {request.url.path}")
+            return JSONResponse(
+                status_code=status.HTTP_403_FORBIDDEN,
+                content={"detail": "Just a moment... We're brewing some coffee!"}
+            )
+        
+        # IP未被拦截，继续处理请求
+        response = await call_next(request)
+        return response
+    
+    def get_client_ip(self, request: Request) -> str:
+        """
+        获取客户端真实IP地址
+        
+        优先从代理头部获取真实IP，如果没有则使用直连IP
+        
+        Args:
+            request: FastAPI请求对象
+            
+        Returns:
+            str: 客户端IP地址
+        """
+        # 优先从X-Forwarded-For头部获取真实IP（适用于代理/负载均衡器场景）
+        forwarded_for = request.headers.get("X-Forwarded-For")
+        if forwarded_for:
+            # X-Forwarded-For可能包含多个IP，取第一个（客户端IP）
+            client_ip = forwarded_for.split(",")[0].strip()
+            return client_ip
+        
+        # 从X-Real-IP头部获取（Nginx等代理常用）
+        real_ip = request.headers.get("X-Real-IP")
+        if real_ip:
+            return real_ip.strip()
+        
+        # 从CF-Connecting-IP头部获取（Cloudflare）
+        cf_ip = request.headers.get("CF-Connecting-IP")
+        if cf_ip:
+            return cf_ip.strip()
+        
+        # 最后使用直连IP地址
+        if hasattr(request, 'client') and request.client:
+            return request.client.host
+        
+        return "unknown"
+
 
 class RedirectMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
@@ -879,7 +1013,16 @@ class RedirectMiddleware(BaseHTTPMiddleware):
         return response
 
 
+# 配置需要拦截的恶意IP地址
+BLOCKED_IPS = {
+    "64.39.106.89",  # 当前攻击IP
+    # 可以添加更多恶意IP地址或IP段，例如：
+    # "192.168.1.0/24",  # 拦截整个网段
+    # "10.0.0.1",       # 拦截单个IP
+}
+
 # Add the middleware to the app
+app.add_middleware(IPBlockingMiddleware, blocked_ips=BLOCKED_IPS)
 app.add_middleware(RedirectMiddleware)
 app.add_middleware(SecurityHeadersMiddleware)
 
@@ -1367,6 +1510,97 @@ async def update_webhook_url(form_data: UrlForm, user=Depends(get_admin_user)):
     app.state.config.WEBHOOK_URL = form_data.url
     app.state.WEBHOOK_URL = app.state.config.WEBHOOK_URL
     return {"url": app.state.config.WEBHOOK_URL}
+
+
+class IPBlockForm(BaseModel):
+    ip: str
+    action: str  # "add" 或 "remove"
+
+
+@app.get("/api/security/blocked-ips")
+async def get_blocked_ips(user=Depends(get_admin_user)):
+    """
+    获取当前被拦截的IP地址列表
+    
+    Returns:
+        dict: 包含被拦截IP地址列表的字典
+    """
+    # 从中间件中获取当前的拦截IP列表
+    ip_middleware = None
+    for middleware in app.user_middleware:
+        if isinstance(middleware.cls, type) and issubclass(middleware.cls, IPBlockingMiddleware):
+            ip_middleware = middleware
+            break
+    
+    blocked_ips = []
+    if ip_middleware and hasattr(ip_middleware, 'kwargs') and 'blocked_ips' in ip_middleware.kwargs:
+        blocked_ips = list(ip_middleware.kwargs['blocked_ips'])
+    
+    return {
+        "blocked_ips": blocked_ips,
+        "count": len(blocked_ips)
+    }
+
+
+@app.post("/api/security/blocked-ips")
+async def manage_blocked_ip(form_data: IPBlockForm, user=Depends(get_admin_user)):
+    """
+    动态添加或移除被拦截的IP地址
+    
+    Args:
+        form_data: 包含IP地址和操作类型的表单数据
+        user: 管理员用户对象
+        
+    Returns:
+        dict: 操作结果
+    """
+    ip = form_data.ip.strip()
+    action = form_data.action.lower()
+    
+    if action not in ["add", "remove"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="操作类型必须是 'add' 或 'remove'"
+        )
+    
+    # 验证IP地址格式
+    try:
+        if '/' in ip:
+            ipaddress.ip_network(ip, strict=False)
+        else:
+            ipaddress.ip_address(ip)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"无效的IP地址格式: {ip}"
+        )
+    
+    global BLOCKED_IPS
+    
+    if action == "add":
+        if ip not in BLOCKED_IPS:
+            BLOCKED_IPS.add(ip)
+            log.info(f"管理员 {user.email} 添加IP到拦截列表: {ip}")
+            message = f"成功添加IP地址 {ip} 到拦截列表"
+        else:
+            message = f"IP地址 {ip} 已在拦截列表中"
+    else:  # remove
+        if ip in BLOCKED_IPS:
+            BLOCKED_IPS.remove(ip)
+            log.info(f"管理员 {user.email} 从拦截列表移除IP: {ip}")
+            message = f"成功从拦截列表移除IP地址 {ip}"
+        else:
+            message = f"IP地址 {ip} 不在拦截列表中"
+    
+    # 重新初始化IP拦截中间件（注意：这种方法在生产环境中需要重启服务才能完全生效）
+    # 建议使用Redis或数据库来存储拦截IP列表以实现真正的动态更新
+    
+    return {
+        "message": message,
+        "ip": ip,
+        "action": action,
+        "current_blocked_ips": list(BLOCKED_IPS)
+    }
 
 
 @app.get("/api/version")
